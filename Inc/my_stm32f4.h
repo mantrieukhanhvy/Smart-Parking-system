@@ -15,6 +15,7 @@ typedef struct {
     volatile uint32_t PUPDR;    // Offset: 0x0C
     volatile uint32_t IDR;      // Offset: 0x10
     volatile uint32_t ODR;      // Offset: 0x14
+    volatile uint32_t BSRR;     // Offset: 0x18
     // Registers BSRR, LCKR, AFR, etc. are omitted for simplicity.
 } GPIO_TypeDef;
 

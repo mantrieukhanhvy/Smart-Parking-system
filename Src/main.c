@@ -17,16 +17,40 @@
  */
 #include "my_stm32f4.h"
 
-void IR_Sensor_Init(void) {
-    // Enable the clock for GPIO Port E (Set bit 4 in the AHB1ENR register)
+void Hardware_Init(void) {
+    // 1. Enable the clock for GPIO Port E (Set bit 4 to 1)
     RCC->AHB1ENR |= (1U << 4);
 
-    // Configure PE8 as an input (Clear bits 16 and 17 in the MODER register)
+    // 2. Configure PE8 as an input for the IR sensor
+    // Clear bits 16 and 17 to set the mode to 00
     GPIOE->MODER &= ~(3U << 16);
+
+    // 3. Configure PE9 as an output to generate the trigger pulse for the HC-SR04
+    // Step A: Clear bits 18 and 19 to 00
+    GPIOE->MODER &= ~(3U << 18);
+
+    // Step B: Set bit 18 to 1 (with bit 19 remaining 0, the mode becomes 01)
+    GPIOE->MODER |= (1U << 18);
+}
+void delay_us(uint32_t us) {
+    // With a 16 MHz internal clock, this loop takes approximately a few microseconds
+    for (volatile uint32_t i = 0; i < (us * 2); i++) {}
+}
+
+// Generate a 10 us trigger pulse for the HC-SR04 sensor
+void HCSR04_Trigger(void) {
+    // 1. Set PE9 HIGH (Set bit 9)
+    GPIOE->BSRR = (1U << 9);
+
+    // 2. Wait for at least 10 microseconds
+    delay_us(10);
+
+    // 3. Set PE9 LOW (Reset bit 9 by writing to the upper half of the BSRR register)
+    GPIOE->BSRR = (1U << (9 + 16));
 }
 
 int main(void) {
-    IR_Sensor_Init();
+	Hardware_Init();
     uint8_t car_detected = 0;
 
     while (1) {
