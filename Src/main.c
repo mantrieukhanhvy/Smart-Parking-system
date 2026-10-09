@@ -15,15 +15,26 @@
  *
  ******************************************************************************
  */
+#include "my_stm32f4.h"
 
-#include <stdint.h>
+void IR_Sensor_Init(void) {
+    // Enable the clock for GPIO Port E (Set bit 4 in the AHB1ENR register)
+    RCC->AHB1ENR |= (1U << 4);
 
-#if !defined(__SOFT_FP__) && defined(__ARM_FP)
-  #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
-#endif
+    // Configure PE8 as an input (Clear bits 16 and 17 in the MODER register)
+    GPIOE->MODER &= ~(3U << 16);
+}
 
-int main(void)
-{
-    /* Loop forever */
-	for(;;);
+int main(void) {
+    IR_Sensor_Init();
+    uint8_t car_detected = 0;
+
+    while (1) {
+        // Read the state of pin PE8 from the IDR register (bit 8)
+        if ((GPIOE->IDR & (1U << 8)) != 0) {
+            car_detected = 0; // No vehicle detected
+        } else {
+            car_detected = 1; // Vehicle detected
+        }
+    }
 }
