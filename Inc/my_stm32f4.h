@@ -5,7 +5,10 @@
 
 /* 1. DEFINE BASE ADDRESSES (Refer to Section 2.3: Memory Map) */
 #define RCC_BASE      0x40023800UL
+#define GPIOA_BASE    0x40020000UL
 #define GPIOE_BASE    0x40021000UL
+#define TIM2_BASE     0x40000000UL
+#define TIM3_BASE     0x40000400UL
 
 /* 2. DEFINE THE GPIO REGISTER STRUCTURE (Refer to Section 8.4: GPIO Registers) */
 typedef struct {
@@ -16,27 +19,53 @@ typedef struct {
     volatile uint32_t IDR;      // Offset: 0x10
     volatile uint32_t ODR;      // Offset: 0x14
     volatile uint32_t BSRR;     // Offset: 0x18
-    // Registers BSRR, LCKR, AFR, etc. are omitted for simplicity.
+    volatile uint32_t LCKR;     // 0x1C
+    volatile uint32_t AFRL;     // 0x20
+    volatile uint32_t AFRH;     // 0x24
 } GPIO_TypeDef;
 
 /* 3. DEFINE THE RCC REGISTER STRUCTURE (Refer to Section 7.3: RCC Registers) */
 typedef struct {
-    volatile uint32_t CR;       // Offset: 0x00
-    volatile uint32_t PLLCFGR;  // Offset: 0x04
-    volatile uint32_t CFGR;     // Offset: 0x08
-    volatile uint32_t CIR;      // Offset: 0x0C
-    volatile uint32_t AHB1RSTR; // Offset: 0x10
-    volatile uint32_t AHB2RSTR; // Offset: 0x14
-    volatile uint32_t AHB3RSTR; // Offset: 0x18
-    uint32_t RESERVED0;         // Offset: 0x1C (Reserved space)
-    volatile uint32_t APB1RSTR; // Offset: 0x20
-    volatile uint32_t APB2RSTR; // Offset: 0x24
-    uint32_t RESERVED1[2];      // Offsets: 0x28–0x2C
-    volatile uint32_t AHB1ENR;  // Offset: 0x30
+	volatile uint32_t CR;       // 0x00
+	    volatile uint32_t PLLCFGR;  // 0x04
+	    volatile uint32_t CFGR;     // 0x08
+	    volatile uint32_t CIR;      // 0x0C
+	    volatile uint32_t AHB1RSTR; // 0x10
+	    volatile uint32_t AHB2RSTR; // 0x14
+	    volatile uint32_t AHB3RSTR; // 0x18
+	    uint32_t RESERVED0;         // 0x1C
+	    volatile uint32_t APB1RSTR; // 0x20
+	    volatile uint32_t APB2RSTR; // 0x24
+	    uint32_t RESERVED1[2];      // 0x28-0x2C
+	    volatile uint32_t AHB1ENR;  // 0x30
+	    volatile uint32_t AHB2ENR;  // 0x34
+	    volatile uint32_t AHB3ENR;  // 0x38
+	    uint32_t RESERVED2;         // 0x3C
+	    volatile uint32_t APB1ENR;  // 0x40
 } RCC_TypeDef;
+
+/* DEFINE THE TIM2 STRUCTURE */
+
+typedef struct {
+    volatile uint32_t CR1;      // 0x00
+    volatile uint32_t CR2;      // 0x04
+    volatile uint32_t SMCR;     // 0x08
+    volatile uint32_t DIER;     // 0x0C
+    volatile uint32_t SR;       // 0x10
+    volatile uint32_t EGR;      // 0x14
+    volatile uint32_t CCMR1;    // 0x18
+    volatile uint32_t CCMR2;    // 0x1C
+    volatile uint32_t CCER;     // 0x20
+    volatile uint32_t CNT;      // 0x24 (counter)
+    volatile uint32_t PSC;      // 0x28 (frequency divider)
+    volatile uint32_t ARR;      // 0x2C (max count)
+} TIM_TypeDef;
 
 /* 4. CAST THE BASE ADDRESSES TO STRUCT POINTERS */
 #define RCC    ((RCC_TypeDef *) RCC_BASE)
+#define GPIOA  ((GPIO_TypeDef *) GPIOA_BASE)
 #define GPIOE  ((GPIO_TypeDef *) GPIOE_BASE)
+#define TIM2   ((TIM_TypeDef *) TIM2_BASE)
+#define TIM3   ((TIM_TypeDef *) TIM3_BASE)
 
 #endif /* MY_STM32F4_H */
