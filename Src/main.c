@@ -16,125 +16,55 @@
  ******************************************************************************
  */
 #include "my_stm32f4.h"
-
-void Hardware_Init(void) {
-    // 1. Enable the clock for GPIO Port E (Set bit 4 to 1) and TIM2 (Bit 0)
-    RCC->AHB1ENR |= (1U << 4);
-    RCC->APB1ENR |= (1U << 0);
-
-    // 2. Configure GPIOE pins
-    // PE8 (IR)   -> Input  (00)
-    // PE10 (Echo) -> Input  (00)
-    // PE9 (Trig)  -> Output (01)
-    GPIOE->MODER &= ~((3U << 16) | (3U << 18) | (3U << 20));
-
-    // 3. Configure PE9 as an output to generate the trigger pulse for the HC-SR04
-    // Set bit 18 to 1 (with bit 19 remaining 0, the mode becomes 01)
-    GPIOE->MODER |= (1U << 18);
-
-    // 4. Configure TIM2 to count every 1 microsecond (1 us)
-    // Assume the STM32F407 timer clock is 16 MHz.
-    // Divide by 16 to obtain 1 MHz (equivalent to 1 us per tick).
-    TIM2->PSC = 16 - 1;
-        TIM2->ARR = 0xFFFFFFFF;
-        TIM2->CR1 |= (1 << 0);
-
-}
-
-float HCSR04_GetDistance(void) {
-    uint32_t time_us = 0;
-
-    // 1. Generate a 10 us trigger pulse on PE9
-    GPIOE->BSRR = (1U << 9);        // Set PE9 HIGH
-    TIM2->CNT = 0;                  // Reset the timer counter
-    while (TIM2->CNT < 10);         // Wait for 10 us
-    GPIOE->BSRR = (1U << (9 + 16)); // Set PE9 LOW
-
-    // 2. Wait for the Echo pin (PE10) to go HIGH
-    // The IDR register bit 10 contains the state of PE10
-    while (!(GPIOE->IDR & (1U << 10)));
-
-    // 3. Start measuring the pulse duration
-    TIM2->CNT = 0;
-
-    // 4. Wait for the Echo pin (PE10) to go LOW
-    // The reflected ultrasonic wave has returned
-    while (GPIOE->IDR & (1U << 10));
-
-    // 5. Read the total duration of the HIGH pulse
-    time_us = TIM2->CNT;
-
-    // 6. Calculate the distance
-    // Distance = Speed of sound * Time / 2
-    // Speed of sound is approximately 0.0343 cm/us
-    return (time_us * 0.0343f) / 2.0f;
-}
-
-void Servo_Init(void) {
-    // 1. Enable the clocks for GPIOA (bit 0) and TIM3 (bit 1)
-    RCC->AHB1ENR |= (1U << 0);
-    RCC->APB1ENR |= (1U << 1);
-
-    // 2. Configure PA6 as an Alternate Function pin (AF2 for TIM3)
-    GPIOA->MODER &= ~(3U << 12);  // Clear the previous configuration for PA6 (bits 12 and 13)
-    GPIOA->MODER |= (2U << 12);   // Set mode to 10: Alternate Function
-
-    // Set PA6 to AF2 (TIM3_CH1, according to the datasheet)
-    GPIOA->AFRL &= ~(0xFU << 24); // Clear bits 24–27 (alternate function for pin 6)
-    GPIOA->AFRL |= (2U << 24);    // Set AF2 (0010)
-
-    // 3. Configure TIM3 to generate 50 Hz PWM (20 ms period)
-    // As with TIM2, divide the 16 MHz clock to 1 MHz (1 us per tick)
-    TIM3->PSC = 16 - 1;
-
-    // Counting to 20,000 ticks corresponds to 20,000 us = 20 ms
-    TIM3->ARR = 20000 - 1;
-
-    // 4. Configure PWM Mode 1 on Channel 1 (CCMR1 register)
-    TIM3->CCMR1 &= ~(7U << 4); // Clear the Output Compare Mode (OC1M) configuration
-    TIM3->CCMR1 |= (6U << 4);  // 110: Select PWM Mode 1
-    TIM3->CCMR1 |= (1U << 3);  // Enable the preload register (OC1PE)
-
-    // 5. Enable Channel 1 (CC1E) and start TIM3 (CEN)
-    TIM3->CCER |= (1U << 0);
-    TIM3->CR1 |= (1U << 0);
-}
-
-void Servo_SetAngle(uint8_t open_gate) {
-	// Control the pulse width using the CCR1 register
-    if (open_gate == 1) {
-    	// Open the barrier (90 degrees): approximately 1.5 ms = 1500 us
-        TIM3->CCR1 = 1500;
-    } else {
-    	// Close the barrier (0 degrees): approximately 1.0 ms = 1000 us
-        TIM3->CCR1 = 1000;
-    }
-}
+#include "ir_sensor.h"
+#include "hcsr04.h"
+#include "servo.h"
+#include "lcd_i2c.h"
 
 int main(void) {
-    Hardware_Init();
+    // 1. Initialize all hardware
+    IR_Sensor_Init();
+    HCSR04_Init();
     Servo_Init();
+    LCD_Init();
 
+    // 2. Set the initial state
+    Servo_SetAngle(0); // Ensure the gate is closed at startup
+
+    // 3. Declare variables to store sensor readings and state
     float distance_cm = 0.0f;
     uint8_t car_at_gate = 0;
 
-    Servo_SetAngle(0);
+    LCD_Clear();
+    LCD_SetCursor(0, 0);
+    LCD_Print("Gate: CLOSED");
+    LCD_SetCursor(1, 0);
+    LCD_Print("Dist:      cm");
 
+    // 4. Main loop
     while (1) {
-        // A. Check the entrance gate using the IR sensor (PE8)
-        if ((GPIOE->IDR & (1U << 8)) == 0) {
-            car_at_gate = 1; // A vehicle is blocking the IR beam
-            Servo_SetAngle(1); // Open the gate
+        // A. Read the IR sensor and control the gate
+        car_at_gate = IR_Sensor_Read();
+
+        if (car_at_gate == 1) {
+            Servo_SetAngle(1);// Open the gate
+            LCD_SetCursor(0, 6);
+            LCD_Print("OPEN  ");
         } else {
-            car_at_gate = 0; // No vehicle is detected
             Servo_SetAngle(0); // Close the gate
+            LCD_SetCursor(0, 6);
+            LCD_Print("CLOSED");
         }
 
-        // B. Measure the parking space distance using the ultrasonic sensor (PE9, PE10)
+        // B. Measure the parking space distance
         distance_cm = HCSR04_GetDistance();
 
-        // C. Add a short delay between measurement cycles to reduce ultrasonic interference
-        TIM2->CNT = 0;
-        while (TIM2->CNT < 50000); // Wait for 50 ms
+        LCD_SetCursor(1, 6);
+        LCD_Print("    ");
+        LCD_SetCursor(1, 6);
+        LCD_PrintInt((int)distance_cm);
+
+        // C. Add a delay to reduce noise and stabilize the loop
+        HCSR04_Delay();
     }
 }
