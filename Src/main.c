@@ -18,8 +18,8 @@
 #include "my_stm32f4.h"
 
 void Hardware_Init(void) {
-    // 1. Enable the clock for GPIO Port E (Set bit 4 to 1) and TIM2 (Bit 0)
-    RCC->AHB1ENR |= (1U << 4);
+    // 1. Enable the clock for GPIO Port E (Set bit 4 to 1), GPIO PortD (bit 3) and TIM2 (Bit 0)
+    RCC->AHB1ENR |= (1U << 4) | (1U << 3);
     RCC->APB1ENR |= (1U << 0);
 
     // 2. Configure GPIOE pins
@@ -32,7 +32,12 @@ void Hardware_Init(void) {
     // Set bit 18 to 1 (with bit 19 remaining 0, the mode becomes 01)
     GPIOE->MODER |= (1U << 18);
 
-    // 4. Configure TIM2 to count every 1 microsecond (1 us)
+    // 4. Configure PD12 (on-board green LED) as the slot-status output
+    GPIOD->MODER &= ~(3 << 24);
+    GPIOD->MODER |= (1 << 24);           // Output mode
+    GPIOD->BSRR = (1 << (12 + 16));      // Start with the LED off (slot free)
+
+    // 5. Configure TIM2 to count every 1 microsecond (1 us)
     // Assume the STM32F407 timer clock is 16 MHz.
     // Divide by 16 to obtain 1 MHz (equivalent to 1 us per tick).
     TIM2->PSC = 16 - 1;

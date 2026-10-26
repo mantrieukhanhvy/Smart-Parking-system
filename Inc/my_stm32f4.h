@@ -6,6 +6,7 @@
 /* 1. DEFINE BASE ADDRESSES (Refer to Section 2.3: Memory Map) */
 #define RCC_BASE      0x40023800UL
 #define GPIOA_BASE    0x40020000UL
+#define GPIOD_BASE    0x40020C00UL
 #define GPIOE_BASE    0x40021000UL
 #define TIM2_BASE     0x40000000UL
 #define TIM3_BASE     0x40000400UL
@@ -64,6 +65,7 @@ typedef struct {
 /* 4. CAST THE BASE ADDRESSES TO STRUCT POINTERS */
 #define RCC    ((RCC_TypeDef *) RCC_BASE)
 #define GPIOA  ((GPIO_TypeDef *) GPIOA_BASE)
+#define GPIOD  ((GPIO_TypeDef *) GPIOD_BASE)
 #define GPIOE  ((GPIO_TypeDef *) GPIOE_BASE)
 #define TIM2   ((TIM_TypeDef *) TIM2_BASE)
 #define TIM3   ((TIM_TypeDef *) TIM3_BASE)

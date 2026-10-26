@@ -22,7 +22,7 @@ Instead of using standard libraries, a custom device header (`my_stm32f4.h`) was
 
 ### Implemented Modules:
 *   **RCC (Reset and Clock Control):** 
-    *   Enabled AHB1 bus clocks for `GPIOA` and `GPIOE`.
+    *   Enabled AHB1 bus clocks for `GPIOA`, `GPIOD` and `GPIOE`.
     *   Enabled APB1 bus clocks for `TIM2` and `TIM3`.
 *   **GPIO Configuration:** 
     *   Configured `MODER` for Input, Output, and Alternate Function modes.
