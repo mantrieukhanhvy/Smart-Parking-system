@@ -6,6 +6,8 @@
  */
 #include "hcsr04.h"
 
+#define HCSR04_ECHO_TIMEOUT_US 30000U
+
 void HCSR04_Init(void) {
     RCC->AHB1ENR |= (1 << 4); // Turn on clock Port E
     RCC->APB1ENR |= (1 << 0); // Turn on clock TIM2
@@ -20,22 +22,35 @@ void HCSR04_Init(void) {
     TIM2->CR1 |= (1 << 0);
 }
 
-float HCSR04_GetDistance(void) {
+uint8_t HCSR04_TryGetDistance(float *distance_cm) {
     uint32_t time_us = 0;
 
-    // Pulse 10us
+    if (distance_cm == 0) {
+        return 0;
+    }
+
     GPIOE->BSRR = (1 << 9);
     TIM2->CNT = 0;
     while (TIM2->CNT < 10);
     GPIOE->BSRR = (1 << (9 + 16));
 
-    // Measure time Echo
-    while (!(GPIOE->IDR & (1 << 10)));
     TIM2->CNT = 0;
-    while ((GPIOE->IDR & (1 << 10)));
+    while (!(GPIOE->IDR & (1 << 10))) {
+        if (TIM2->CNT >= HCSR04_ECHO_TIMEOUT_US) {
+            return 0;
+        }
+    }
+
+    TIM2->CNT = 0;
+    while (GPIOE->IDR & (1 << 10)) {
+        if (TIM2->CNT >= HCSR04_ECHO_TIMEOUT_US) {
+            return 0;
+        }
+    }
 
     time_us = TIM2->CNT;
-    return (time_us * 0.0343f) / 2.0f;
+    *distance_cm = (time_us * 0.0343f) / 2.0f;
+    return 1;
 }
 
 void HCSR04_Delay(void) {
@@ -43,4 +58,3 @@ void HCSR04_Delay(void) {
     TIM2->CNT = 0;
     while (TIM2->CNT < 100000);
 }
-

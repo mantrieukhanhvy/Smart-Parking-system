@@ -20,51 +20,71 @@
 #include "hcsr04.h"
 #include "servo.h"
 #include "lcd_i2c.h"
+#include "parking_config.h"
+
+#define PARKING_OCCUPIED_DISTANCE_CM 5.0f
 
 int main(void) {
+    uint32_t parking_capacity;
+    uint32_t vacancy;
+    uint8_t sensor_ok;
+    uint8_t occupied = 0;
+    uint8_t car_at_gate;
+    float distance_cm;
+
     // 1. Initialize all hardware
     IR_Sensor_Init();
     HCSR04_Init();
     Servo_Init();
     LCD_Init();
 
-    // 2. Set the initial state
-    Servo_SetAngle(0); // Ensure the gate is closed at startup
-
-    // 3. Declare variables to store sensor readings and state
-    float distance_cm = 0.0f;
-    uint8_t car_at_gate = 0;
-
+    Servo_SetAngle(0);
     LCD_Clear();
-    LCD_SetCursor(0, 0);
-    LCD_Print("Gate: CLOSED");
-    LCD_SetCursor(1, 0);
-    LCD_Print("Dist:      cm");
+    LCD_Print("Loading config");
 
-    // 4. Main loop
+    //Handles error if the flash memory is not initialized or corrupted
+    if (!ParkingConfig_Init(&parking_capacity)) {
+        LCD_Clear();
+        LCD_Print("Flash config");
+        LCD_SetCursor(1, 0);
+        LCD_Print("ERROR");
+        while (1) {
+            Servo_SetAngle(0);
+        }
+    }
+
+    occupied = 0;
     while (1) {
-        // A. Read the IR sensor and control the gate
-        car_at_gate = IR_Sensor_Read();
+        sensor_ok = HCSR04_TryGetDistance(&distance_cm);
 
-        if (car_at_gate == 1) {
-            Servo_SetAngle(1);// Open the gate
-            LCD_SetCursor(0, 6);
-            LCD_Print("OPEN  ");
-        } else {
-            Servo_SetAngle(0); // Close the gate
-            LCD_SetCursor(0, 6);
-            LCD_Print("CLOSED");
+        if (sensor_ok) {
+            occupied = (distance_cm <= PARKING_OCCUPIED_DISTANCE_CM);
         }
 
-        // B. Measure the parking space distance
-        distance_cm = HCSR04_GetDistance();
+        vacancy = sensor_ok ? parking_capacity - occupied : 0U;
+        car_at_gate = 0;
 
-        LCD_SetCursor(1, 6);
-        LCD_Print("    ");
-        LCD_SetCursor(1, 6);
-        LCD_PrintInt((int)distance_cm);
+        if (vacancy > 0U) {
+            car_at_gate = IR_Sensor_Read();
+        }
 
-        // C. Add a delay to reduce noise and stabilize the loop
+        Servo_SetAngle(car_at_gate);
+
+        LCD_SetCursor(0, 0);
+        LCD_Print("Free: ");
+        LCD_PrintInt((int)vacancy);
+        LCD_Print("/");
+        LCD_PrintInt((int)parking_capacity);
+        LCD_Print("       ");
+
+        LCD_SetCursor(1, 0);
+        if (!sensor_ok) {
+            LCD_Print("Sensor: ERROR   ");
+        } else {
+            LCD_Print("Gate: ");
+            LCD_Print(car_at_gate ? "OPEN   " : "CLOSED ");
+        }
+
         HCSR04_Delay();
     }
 }
