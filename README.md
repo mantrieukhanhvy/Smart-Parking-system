@@ -16,6 +16,8 @@ Currently, the project is in **Phase 1: Hardware bring-up**. It is being develop
 | **HC-SR04 (Trigger)** | `PE9` | GPIO Output | Sends a 10µs HIGH pulse to initiate ultrasonic measurement. |
 | **HC-SR04 (Echo)** | `PE10` | GPIO Input | Receives the acoustic reflection pulse. |
 | **Servo Motor** | `PA6` | Alternate Function (AF2) | Receives 50Hz PWM signal to actuate the gate barrier. |
+| **Green LED** | `PB0` | GPIO Output | Indicates a valid vacant-slot reading. |
+| **Red LED** | `PB1` | GPIO Output | Indicates a valid occupied-slot reading. |
 
 ## 3. Software Architecture (Custom Drivers)
 Instead of using standard libraries, a custom device header (`my_stm32f4.h`) was created to map the physical memory addresses to C structures for atomic bitwise operations.
@@ -44,7 +46,7 @@ Instead of using standard libraries, a custom device header (`my_stm32f4.h`) was
 4. Simultaneously, the `HCSR04_GetDistance()` function is called periodically to monitor the parking slot's occupancy status using `TIM2`.
 
 ### Current Occupancy and Capacity Behavior
-The HC-SR04 measures the slot continuously. A valid reading at or below 5 cm marks it occupied; a larger reading marks it vacant. The LCD shows `Free: vacancy/capacity`. The entrance IR sensor at `PE8` is only read while at least one space is vacant; the gate stays closed if the slot is occupied or the ultrasonic measurement times out.
+The HC-SR04 measures the slot continuously. A valid reading at or below 5 cm marks it occupied; a larger reading marks it vacant. The LCD shows `Free: vacancy/capacity`; the green LED lights for a vacant slot and the red LED for an occupied slot. Both LEDs turn off if the ultrasonic measurement times out. The entrance IR sensor at `PE8` is only read while at least one space is vacant; the gate stays closed if the slot is occupied or the ultrasonic measurement times out.
 
 The current build supports one monitored space. To monitor multiple separate spaces, add one HC-SR04 per space and extend the GPIO/sensor configuration; one fixed sensor cannot determine occupancy of several separate spaces. Capacity defaults to one and is initialized in the final STM32F407 Flash sector, which is reserved from firmware placement by the linker. Vacancy is recalculated from the sensor after every boot and is not written to Flash.
 

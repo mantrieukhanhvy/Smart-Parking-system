@@ -21,6 +21,7 @@
 #include "servo.h"
 #include "lcd_i2c.h"
 #include "parking_config.h"
+#include "led.h"
 
 #define PARKING_OCCUPIED_DISTANCE_CM 5.0f
 
@@ -36,6 +37,7 @@ int main(void) {
     IR_Sensor_Init();
     HCSR04_Init();
     Servo_Init();
+    LED_Init();
     LCD_Init();
 
     Servo_SetAngle(0);
@@ -59,6 +61,9 @@ int main(void) {
 
         if (sensor_ok) {
             occupied = (distance_cm <= PARKING_OCCUPIED_DISTANCE_CM);
+            LED_SetParkingStatus(occupied ? LED_STATUS_OCCUPIED : LED_STATUS_VACANT);
+        } else {
+            LED_SetParkingStatus(LED_STATUS_UNKNOWN);
         }
 
         vacancy = sensor_ok ? parking_capacity - occupied : 0U;
