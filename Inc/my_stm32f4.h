@@ -6,10 +6,12 @@
 /* 1. DEFINE BASE ADDRESSES (Refer to Section 2.3: Memory Map) */
 #define RCC_BASE      0x40023800UL
 #define GPIOA_BASE    0x40020000UL
+#define GPIOB_BASE    0x40020400UL
 #define GPIOD_BASE    0x40020C00UL
 #define GPIOE_BASE    0x40021000UL
 #define TIM2_BASE     0x40000000UL
 #define TIM3_BASE     0x40000400UL
+#define I2C1_BASE     0x40005400UL
 
 /* 2. DEFINE THE GPIO REGISTER STRUCTURE (Refer to Section 8.4: GPIO Registers) */
 typedef struct {
@@ -60,14 +62,34 @@ typedef struct {
     volatile uint32_t CNT;      // 0x24 (counter)
     volatile uint32_t PSC;      // 0x28 (frequency divider)
     volatile uint32_t ARR;      // 0x2C (max count)
+    volatile uint32_t RCR;      // 0x30
+    volatile uint32_t CCR1;     // 0x34
+    volatile uint32_t CCR2;     // 0x38
+    volatile uint32_t CCR3;     // 0x3C
+    volatile uint32_t CCR4;     // 0x40
 } TIM_TypeDef;
+
+typedef struct {
+    volatile uint32_t CR1;      // 0x00
+    volatile uint32_t CR2;      // 0x04
+    volatile uint32_t OAR1;     // 0x08
+    volatile uint32_t OAR2;     // 0x0C
+    volatile uint32_t DR;       // 0x10
+    volatile uint32_t SR1;      // 0x14
+    volatile uint32_t SR2;      // 0x18
+    volatile uint32_t CCR;      // 0x1C
+    volatile uint32_t TRISE;    // 0x20
+    volatile uint32_t FLTR;     // 0x24
+} I2C_TypeDef;
 
 /* 4. CAST THE BASE ADDRESSES TO STRUCT POINTERS */
 #define RCC    ((RCC_TypeDef *) RCC_BASE)
 #define GPIOA  ((GPIO_TypeDef *) GPIOA_BASE)
+#define GPIOB  ((GPIO_TypeDef *) GPIOB_BASE)
 #define GPIOD  ((GPIO_TypeDef *) GPIOD_BASE)
 #define GPIOE  ((GPIO_TypeDef *) GPIOE_BASE)
 #define TIM2   ((TIM_TypeDef *) TIM2_BASE)
 #define TIM3   ((TIM_TypeDef *) TIM3_BASE)
+#define I2C1   ((I2C_TypeDef *) I2C1_BASE)
 
 #endif /* MY_STM32F4_H */
