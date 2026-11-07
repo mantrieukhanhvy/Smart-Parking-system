@@ -18,16 +18,15 @@
 /* --------------------------------------------------------------------------
  * Application tuning
  * ------------------------------------------------------------------------ */
-#define PARKING_OCCUPIED_DISTANCE_CM   5.0f
+#define PARKING_OCCUPIED_DISTANCE_CM 5.0f
 
 /* Shared parking capacity initialized in main */
 extern uint32_t parking_capacity;
 
 /**
- * @brief Main parking system task loop.
+ * @brief High-priority task for sensors, LEDs, and gate servo control.
  */
-
-    static void vParkingTask(void *pvParameters) {
+static void vSensorGateTask(void *pvParameters) {
     uint32_t vacancy;
     uint8_t sensor_ok;
     uint8_t occupied = 0;
@@ -53,6 +52,22 @@ extern uint32_t parking_capacity;
 
         Servo_SetAngle(car_at_gate);
 
+        // Run this check relatively frequently (e.g., every 100ms)
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
+/**
+ * @brief Low-priority task dedicated to updating the I2C LCD.
+ */
+static void vDisplayTask(void *pvParameters) {
+    uint32_t vacancy;
+    uint8_t sensor_ok;
+    uint8_t occupied = 0;
+    uint8_t car_at_gate;
+    float distance_cm;
+
+    for (;;) {
         LCD_SetCursor(0, 0);
         LCD_Print("Free: ");
         LCD_PrintInt((int)vacancy);
@@ -67,18 +82,30 @@ extern uint32_t parking_capacity;
             LCD_Print("Gate: ");
             LCD_Print(car_at_gate ? "OPEN   " : "CLOSED ");
         }
-
-        HCSR04_Delay(); 
+        
+        // Slow, non-critical LCD updates (e.g., every 400ms)
+        vTaskDelay(pdMS_TO_TICKS(400));
     }
 }
 
 void Create_Parking_Tasks(void) {
+    // Create High-Priority Sensor & Gate Task
     xTaskCreate(
-        vParkingTask,                   /* Task function */
-        "ParkingTask",                  /* Task name for debugging */
+        vSensorGateTask,
+        "SensorGateTask",
+        configMINIMAL_STACK_SIZE * 2,
+        NULL,
+        tskIDLE_PRIORITY + 2,           // High Task priority
+        NULL
+    );
+
+    // Create Low-Priority Display Task
+    xTaskCreate(
+        vDisplayTask,                   /* Task function */
+        "DisplayTask",                  /* Task name for debugging */
         configMINIMAL_STACK_SIZE * 2,   /* Stack depth */
         NULL,                           /* Task parameters */
-        tskIDLE_PRIORITY + 1,           /* Task priority */
+        tskIDLE_PRIORITY + 1,           /* Low Task priority */
         NULL                            /* Task handle */
     );
 }
