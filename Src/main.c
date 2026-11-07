@@ -22,6 +22,7 @@
 #include "lcd_i2c.h"
 #include "parking_config.h"
 #include "led.h"
+#include "freertos_init.h"
 
 #define PARKING_OCCUPIED_DISTANCE_CM 5.0f
 
@@ -41,6 +42,9 @@ int main(void) {
     LCD_Init();
 
     Servo_SetAngle(0);
+    /* Initialize the RTOS kernel and start the scheduler. */
+    FreeRTOS_Init();
+
     LCD_Clear();
     LCD_Print("Loading config");
 
