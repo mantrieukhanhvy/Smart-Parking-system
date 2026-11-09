@@ -23,9 +23,6 @@
 #include "parking_config.h"
 #include "led.h"
 #include "freertos_init.h"
-#include "tasks.h"
-
-#define PARKING_OCCUPIED_DISTANCE_CM 5.0f
 
 /* Global variable to be accessed by tasks.c */
 uint32_t parking_capacity;
