@@ -21,70 +21,146 @@
  * ------------------------------------------------------------------------ */
 #define PARKING_OCCUPIED_DISTANCE_CM 5.0f
 
-/* Shared parking capacity initialized in main */
+#define STATE_LOCK_TIMEOUT_MS 50U
+
 extern uint32_t parking_capacity;
 
-/* Shared global state variables */
-static uint32_t global_vacancy = 0;
-static uint8_t global_sensor_ok = 0;
-static uint8_t global_car_at_gate = 0;
+typedef struct {
+    uint8_t sensor_ok;
+    uint8_t occupied;
+    uint8_t car_at_gate;
+    uint32_t vacancy;
+    uint8_t gate_open;
+    uint8_t led_status;
+    float distance_cm;
+} parking_state_t;
 
-/* Mutex to protect shared state between tasks */
+static parking_state_t global_state;
 static SemaphoreHandle_t xStateMutex = NULL;
 
-/**
- * @brief High-priority task for sensors, LEDs, and gate servo control.
- */
-static void vSensorGateTask(void *pvParameters) {
-    float distance_cm;
-    uint8_t occupied = 0;
+static void vParkingLogicTask(void *pvParameters) {
+    (void)pvParameters;
 
     for (;;) {
-        uint8_t sensor_ok = HCSR04_TryGetDistance(&distance_cm);
+        if (xSemaphoreTake(xStateMutex, pdMS_TO_TICKS(STATE_LOCK_TIMEOUT_MS)) == pdTRUE) {
+            uint8_t sensor_ok = global_state.sensor_ok;
+            uint8_t occupied = global_state.occupied;
+            uint8_t car_at_gate = global_state.car_at_gate;
+            uint32_t vacancy = 0U;
+            uint8_t gate_open;
+            uint8_t led_status;
 
-        if (sensor_ok) {
-            occupied = (distance_cm <= PARKING_OCCUPIED_DISTANCE_CM);
-            LED_SetParkingStatus(occupied ? LED_STATUS_OCCUPIED : LED_STATUS_VACANT);
-        } else {
-            LED_SetParkingStatus(LED_STATUS_UNKNOWN);
-        }
+            if (sensor_ok && (occupied < parking_capacity)) {
+                vacancy = parking_capacity - occupied;
+            }
 
-        uint32_t vacancy = sensor_ok ? parking_capacity - occupied : 0U;
-        uint8_t car_at_gate = 0;
+            gate_open = (vacancy > 0U) ? car_at_gate : 0U;
+            led_status = !sensor_ok ? LED_STATUS_UNKNOWN :
+                         (occupied ? LED_STATUS_OCCUPIED : LED_STATUS_VACANT);
 
-        if (vacancy > 0U) {
-            car_at_gate = IR_Sensor_Read();
-        }
+            global_state.vacancy = vacancy;
+            global_state.gate_open = gate_open;
+            global_state.led_status = led_status;
 
-        Servo_SetAngle(car_at_gate);
-
-        // Safely update shared state variables for the display task
-        if (xSemaphoreTake(xStateMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-            global_vacancy = vacancy;
-            global_sensor_ok = sensor_ok;
-            global_car_at_gate = car_at_gate;
             xSemaphoreGive(xStateMutex);
         }
 
-        // Run this check relatively frequently (e.g., every 100ms)
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
+
+static void vIRTask(void *pvParameters) {
+    (void)pvParameters;
+
+    for (;;) {
+        uint8_t car_at_gate = IR_Sensor_Read();
+
+        if (xSemaphoreTake(xStateMutex, pdMS_TO_TICKS(STATE_LOCK_TIMEOUT_MS)) == pdTRUE) {
+            global_state.car_at_gate = car_at_gate;
+            xSemaphoreGive(xStateMutex);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+static void vUltrasonicTask(void *pvParameters) {
+    float distance_cm = 0.0f;
+
+    (void)pvParameters;
+
+    for (;;) {
+        uint8_t sensor_ok = HCSR04_TryGetDistance(&distance_cm);
+        uint8_t occupied = sensor_ok &&
+            (distance_cm <= PARKING_OCCUPIED_DISTANCE_CM);
+
+        if (xSemaphoreTake(xStateMutex, pdMS_TO_TICKS(STATE_LOCK_TIMEOUT_MS)) == pdTRUE) {
+            global_state.sensor_ok = sensor_ok;
+            global_state.occupied = occupied;
+            global_state.distance_cm = distance_cm;
+            xSemaphoreGive(xStateMutex);
+        }
+
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
-/**
- * @brief Low-priority task dedicated to updating the I2C LCD.
- */
-static void vDisplayTask(void *pvParameters) {
-    uint32_t local_vacancy;
-    uint8_t local_sensor_ok;
-    uint8_t local_car_at_gate;
+static void vServoTask(void *pvParameters) {
+    uint8_t last_gate_open = 0U;
+
+    (void)pvParameters;
 
     for (;;) {
-        // Safely copy shared state variables
-        if (xSemaphoreTake(xStateMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-            local_vacancy = global_vacancy;
-            local_sensor_ok = global_sensor_ok;
-            local_car_at_gate = global_car_at_gate;
+        uint8_t gate_open = last_gate_open;
+
+        if (xSemaphoreTake(xStateMutex, pdMS_TO_TICKS(STATE_LOCK_TIMEOUT_MS)) == pdTRUE) {
+            gate_open = global_state.gate_open;
+            xSemaphoreGive(xStateMutex);
+        }
+
+        if (gate_open != last_gate_open) {
+            Servo_SetAngle(gate_open);
+            last_gate_open = gate_open;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(20));
+    }
+}
+
+static void vLEDTask(void *pvParameters) {
+    uint8_t last_status = LED_STATUS_UNKNOWN;
+
+    (void)pvParameters;
+
+    for (;;) {
+        uint8_t status = last_status;
+
+        if (xSemaphoreTake(xStateMutex, pdMS_TO_TICKS(STATE_LOCK_TIMEOUT_MS)) == pdTRUE) {
+            status = global_state.led_status;
+            xSemaphoreGive(xStateMutex);
+        }
+
+        if (status != last_status) {
+            LED_SetParkingStatus(status);
+            last_status = status;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
+
+static void vDisplayTask(void *pvParameters) {
+    uint32_t local_vacancy = 0U;
+    uint8_t local_sensor_ok = 0U;
+    uint8_t local_gate_open = 0U;
+
+    (void)pvParameters;
+
+    for (;;) {
+        if (xSemaphoreTake(xStateMutex, pdMS_TO_TICKS(STATE_LOCK_TIMEOUT_MS)) == pdTRUE) {
+            local_vacancy = global_state.vacancy;
+            local_sensor_ok = global_state.sensor_ok;
+            local_gate_open = global_state.gate_open;
             xSemaphoreGive(xStateMutex);
         }
 
@@ -100,36 +176,40 @@ static void vDisplayTask(void *pvParameters) {
             LCD_Print("Sensor: ERROR   ");
         } else {
             LCD_Print("Gate: ");
-            LCD_Print(local_car_at_gate ? "OPEN   " : "CLOSED ");
+            LCD_Print(local_gate_open ? "OPEN   " : "CLOSED ");
         }
-        
-        // Slow, non-critical LCD updates (e.g., every 400ms)
+
         vTaskDelay(pdMS_TO_TICKS(400));
     }
 }
 
 void Create_Parking_Tasks(void) {
-    // Create the mutex for thread-safe data sharing
+    global_state.sensor_ok = 0U;
+    global_state.occupied = 0U;
+    global_state.car_at_gate = 0U;
+    global_state.vacancy = 0U;
+    global_state.gate_open = 0U;
+    global_state.led_status = LED_STATUS_UNKNOWN;
+    global_state.distance_cm = 0.0f;
+
     xStateMutex = xSemaphoreCreateMutex();
     configASSERT(xStateMutex != NULL);
 
-    // Create High-Priority Sensor & Gate Task
-    xTaskCreate(
-        vSensorGateTask,
-        "SensorGateTask",
-        configMINIMAL_STACK_SIZE * 2,
-        NULL,
-        tskIDLE_PRIORITY + 2,           // High Task priority
-        NULL
-    );
+    configASSERT(xTaskCreate(vParkingLogicTask, "ParkingLogic",
+        configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY + 5, NULL) == pdPASS);
 
-    // Create Low-Priority Display Task
-    xTaskCreate(
-        vDisplayTask,                   /* Task function */
-        "DisplayTask",                  /* Task name for debugging */
-        configMINIMAL_STACK_SIZE * 2,   /* Stack depth */
-        NULL,                           /* Task parameters */
-        tskIDLE_PRIORITY + 1,           /* Low Task priority */
-        NULL                            /* Task handle */
-    );
+    configASSERT(xTaskCreate(vIRTask, "IRSensor",
+        configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL) == pdPASS);
+
+    configASSERT(xTaskCreate(vUltrasonicTask, "Ultrasonic",
+        configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY + 3, NULL) == pdPASS);
+
+    configASSERT(xTaskCreate(vServoTask, "Servo",
+        configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL) == pdPASS);
+
+    configASSERT(xTaskCreate(vLEDTask, "LED",
+        configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS);
+
+    configASSERT(xTaskCreate(vDisplayTask, "Display",
+        configMINIMAL_STACK_SIZE * 2, NULL, tskIDLE_PRIORITY + 1, NULL) == pdPASS);
 }

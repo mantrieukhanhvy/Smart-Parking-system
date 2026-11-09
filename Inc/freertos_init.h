@@ -2,11 +2,10 @@
 #define FREERTOS_INIT_H_
 
 /*
- * Creates the initial FreeRTOS task and starts the scheduler.
+ * Creates the parking application tasks and starts the scheduler.
  *
- * This is intentionally minimal: it only proves that the kernel, port and
- * heap are configured correctly. The parking application logic is not
- * migrated to tasks yet.
+ * The parking logic and each peripheral owner are separate FreeRTOS tasks,
+ * communicating through the shared state protected by a mutex in tasks.c.
  *
  * Does not return when the scheduler starts successfully.
  */
