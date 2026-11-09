@@ -54,8 +54,6 @@ int main(void) {
         }
     }
     
-    Create_Parking_Tasks();
-    
     /* Initialize the RTOS kernel and start the scheduler. */
     FreeRTOS_Init();
     while (1) {
