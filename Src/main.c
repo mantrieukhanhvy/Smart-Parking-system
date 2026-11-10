@@ -22,17 +22,12 @@
 #include "lcd_i2c.h"
 #include "parking_config.h"
 #include "led.h"
+#include "freertos_init.h"
 
-#define PARKING_OCCUPIED_DISTANCE_CM 5.0f
+/* Global variable to be accessed by tasks.c */
+uint32_t parking_capacity;
 
 int main(void) {
-    uint32_t parking_capacity;
-    uint32_t vacancy;
-    uint8_t sensor_ok;
-    uint8_t occupied = 0;
-    uint8_t car_at_gate;
-    float distance_cm;
-
     // 1. Initialize all hardware
     IR_Sensor_Init();
     HCSR04_Init();
@@ -41,9 +36,10 @@ int main(void) {
     LCD_Init();
 
     Servo_SetAngle(0);
+    
     LCD_Clear();
     LCD_Print("Loading config");
-
+    
     //Handles error if the flash memory is not initialized or corrupted
     if (!ParkingConfig_Init(&parking_capacity)) {
         LCD_Clear();
@@ -54,42 +50,9 @@ int main(void) {
             Servo_SetAngle(0);
         }
     }
-
-    occupied = 0;
+    
+    /* Initialize the RTOS kernel and start the scheduler. */
+    FreeRTOS_Init();
     while (1) {
-        sensor_ok = HCSR04_TryGetDistance(&distance_cm);
-
-        if (sensor_ok) {
-            occupied = (distance_cm <= PARKING_OCCUPIED_DISTANCE_CM);
-            LED_SetParkingStatus(occupied ? LED_STATUS_OCCUPIED : LED_STATUS_VACANT);
-        } else {
-            LED_SetParkingStatus(LED_STATUS_UNKNOWN);
-        }
-
-        vacancy = sensor_ok ? parking_capacity - occupied : 0U;
-        car_at_gate = 0;
-
-        if (vacancy > 0U) {
-            car_at_gate = IR_Sensor_Read();
-        }
-
-        Servo_SetAngle(car_at_gate);
-
-        LCD_SetCursor(0, 0);
-        LCD_Print("Free: ");
-        LCD_PrintInt((int)vacancy);
-        LCD_Print("/");
-        LCD_PrintInt((int)parking_capacity);
-        LCD_Print("       ");
-
-        LCD_SetCursor(1, 0);
-        if (!sensor_ok) {
-            LCD_Print("Sensor: ERROR   ");
-        } else {
-            LCD_Print("Gate: ");
-            LCD_Print(car_at_gate ? "OPEN   " : "CLOSED ");
-        }
-
-        HCSR04_Delay();
     }
 }
