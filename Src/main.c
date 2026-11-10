@@ -29,6 +29,7 @@ uint32_t parking_capacity;
 
 int main(void) {
     // 1. Initialize all hardware
+    SWO_Init();         // Enable ITM
     IR_Sensor_Init();
     HCSR04_Init();
     Servo_Init();
