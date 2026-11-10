@@ -11,11 +11,10 @@
 #include "ir_sensor.h"
 #include "hcsr04.h"
 #include "servo.h"
-#include "lcd_i2c.h"
 #include "parking_config.h"
 #include "led.h"
 #include "semphr.h" // for mutex
-
+#include <stdio.h>
 /* --------------------------------------------------------------------------
  * Application tuning
  * ------------------------------------------------------------------------ */
@@ -88,22 +87,14 @@ static void vDisplayTask(void *pvParameters) {
             xSemaphoreGive(xStateMutex);
         }
 
-        LCD_SetCursor(0, 0);
-        LCD_Print("Free: ");
-        LCD_PrintInt((int)local_vacancy);
-        LCD_Print("/");
-        LCD_PrintInt((int)parking_capacity);
-        LCD_Print("       ");
-
-        LCD_SetCursor(1, 0);
+        // Print formatted status line to the console
         if (!local_sensor_ok) {
-            LCD_Print("Sensor: ERROR   ");
+            printf("Sensor: ERROR\r\n");
         } else {
-            LCD_Print("Gate: ");
-            LCD_Print(local_car_at_gate ? "OPEN   " : "CLOSED ");
+            printf("Free: %lu/%lu | Gate: %s\r\n", local_car_at_gate ? "OPEN" : "CLOSED");
         }
         
-        // Slow, non-critical LCD updates (e.g., every 400ms)
+        // Slow, non-critical status updates (e.g., every 400ms)
         vTaskDelay(pdMS_TO_TICKS(400));
     }
 }
@@ -127,7 +118,7 @@ void Create_Parking_Tasks(void) {
     xTaskCreate(
         vDisplayTask,                   /* Task function */
         "DisplayTask",                  /* Task name for debugging */
-        configMINIMAL_STACK_SIZE * 2,   /* Stack depth */
+        configMINIMAL_STACK_SIZE * 4,   /* Stack depth */
         NULL,                           /* Task parameters */
         tskIDLE_PRIORITY + 1,           /* Low Task priority */
         NULL                            /* Task handle */
