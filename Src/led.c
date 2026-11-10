@@ -20,7 +20,7 @@ void LED_Init(void) {
 void LED_SetParkingStatus(uint8_t status) {
     GPIOD->BSRR = LED_ALL_PINS << 16;
 
-    if (status == LED_STATUS_VACANT) {
+    if (status == LED_STATUS_VACANT || status == LED_STATUS_UNKNOWN)  {
         GPIOD->BSRR = (1U << LED_GREEN_PIN);
     } else if (status == LED_STATUS_OCCUPIED) {
         GPIOD->BSRR = (1U << LED_RED_PIN);

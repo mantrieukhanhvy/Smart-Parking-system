@@ -49,6 +49,14 @@ static void vSensorGateTask(void *pvParameters) {
         uint32_t vacancy = sensor_ok ? parking_capacity - occupied : 0U;
         uint8_t car_at_gate = 0;
 
+        uint32_t pe8_level = (GPIOE->IDR >> 8U) & 1U;
+
+        printf("PE8=%lu | IR detected=%u | ultrasonic OK=%u | vacancy=%lu\r\n",
+               (unsigned long)pe8_level,
+               (unsigned int)(pe8_level == 0U),
+               (unsigned int)sensor_ok,
+               (unsigned long)vacancy);
+
         if (vacancy > 0U) {
             car_at_gate = IR_Sensor_Read();
         }
