@@ -14,14 +14,12 @@
 #include "parking_config.h"
 #include "led.h"
 #include "semphr.h" // for mutex
+#include <stdint.h>
 #include <stdio.h>
 /* --------------------------------------------------------------------------
  * Application tuning
  * ------------------------------------------------------------------------ */
 #define PARKING_OCCUPIED_DISTANCE_CM 5.0f
-
-/* Shared parking capacity initialized in main */
-extern uint32_t parking_capacity;
 
 /* Shared global state variables */
 static uint32_t global_vacancy = 0;
@@ -74,9 +72,9 @@ static void vSensorGateTask(void *pvParameters) {
  * @brief Low-priority task dedicated to updating the I2C LCD.
  */
 static void vDisplayTask(void *pvParameters) {
-    uint32_t local_vacancy;
-    uint8_t local_sensor_ok;
-    uint8_t local_car_at_gate;
+    uint32_t local_vacancy = 0;
+    uint8_t local_sensor_ok = 0;
+    uint8_t local_car_at_gate = 0;
 
     for (;;) {
         // Safely copy shared state variables
@@ -91,7 +89,10 @@ static void vDisplayTask(void *pvParameters) {
         if (!local_sensor_ok) {
             printf("Sensor: ERROR\r\n");
         } else {
-            printf("Free: %lu/%lu | Gate: %s\r\n", local_car_at_gate ? "OPEN" : "CLOSED");
+            printf("Free: %lu/%lu | Gate: %s\r\n",
+                   (unsigned long)local_vacancy,
+                   (unsigned long)parking_capacity,
+                   local_car_at_gate ? "OPEN" : "CLOSED");
         }
         
         // Slow, non-critical status updates (e.g., every 400ms)

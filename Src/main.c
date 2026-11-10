@@ -22,9 +22,9 @@
 #include "parking_config.h"
 #include "led.h"
 #include "freertos_init.h"
+#include "retarget.h"
 #include <stdio.h>
 
-/* Global variable to be accessed by tasks.c */
 uint32_t parking_capacity;
 
 int main(void) {
@@ -37,7 +37,7 @@ int main(void) {
 
     Servo_SetAngle(0);
     
-    printf("Loading config\r\n");
+    printf("Loading config \n");
     
     //Handles error if the flash memory is not initialized or corrupted
     if (!ParkingConfig_Init(&parking_capacity)) {
