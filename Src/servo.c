@@ -7,6 +7,9 @@
 
 #include "servo.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 void Servo_Init(void) {
     RCC->AHB1ENR |= (1 << 0); // Port A
     RCC->APB1ENR |= (1 << 1); // TIM3
@@ -29,10 +32,30 @@ void Servo_Init(void) {
     TIM3->CR1 |= (1 << 0);
 }
 
-void Servo_SetAngle(uint8_t open_gate) {
-    if (open_gate == 1) {
-        TIM3->CCR1 = 1500; // open 90 degree
-    } else {
-        TIM3->CCR1 = 1000; // close 0 degree
+// void Servo_SetAngle(uint8_t open_gate) {
+//     if (open_gate == 1) {
+//         TIM3->CCR1 = 1500; // open 90 degree
+//     } else {
+//         TIM3->CCR1 = 1000; // close 0 degree
+//     }
+// }
+
+void Servo_SetAngle(uint8_t open_gate)
+{
+    static uint16_t pulse_us = 1000;
+    const uint16_t target_us = open_gate ? 2000 : 1000;
+    const uint16_t step_us = 10;
+
+    while (pulse_us != target_us) {
+        if (pulse_us < target_us) {
+            pulse_us = (pulse_us + step_us > target_us)
+                ? target_us : pulse_us + step_us;
+        } else {
+            pulse_us = (pulse_us - target_us > step_us)
+                ? pulse_us - step_us : target_us;
+        }
+
+        TIM3->CCR1 = pulse_us;
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
