@@ -19,36 +19,27 @@
 #include "ir_sensor.h"
 #include "hcsr04.h"
 #include "servo.h"
-#include "lcd_i2c.h"
 #include "parking_config.h"
 #include "led.h"
 #include "freertos_init.h"
+#include "retarget.h"
+#include <stdio.h>
 
-/* Global variable to be accessed by tasks.c */
 uint32_t parking_capacity;
 
 int main(void) {
     // 1. Initialize all hardware
+    SWO_Init();         // Enable ITM
     IR_Sensor_Init();
     HCSR04_Init();
     Servo_Init();
     LED_Init();
-    LCD_Init();
-
-    Servo_SetAngle(0);
     
-    LCD_Clear();
-    LCD_Print("Loading config");
+    printf("Loading config \n");
     
     //Handles error if the flash memory is not initialized or corrupted
     if (!ParkingConfig_Init(&parking_capacity)) {
-        LCD_Clear();
-        LCD_Print("Flash config");
-        LCD_SetCursor(1, 0);
-        LCD_Print("ERROR");
-        while (1) {
-            Servo_SetAngle(0);
-        }
+        printf("Flash config ERROR\r\n");
     }
     
     /* Initialize the RTOS kernel and start the scheduler. */

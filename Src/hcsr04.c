@@ -16,10 +16,15 @@ void HCSR04_Init(void) {
     GPIOE->MODER &= ~((3U << 18) | (3U << 20));
     GPIOE->MODER |= (1U << 18);
 
-    // Config TIM2 (1 us/tick)
-    TIM2->PSC = 16 - 1;
-    TIM2->ARR = 0xFFFFFFFF;
-    TIM2->CR1 |= (1 << 0);
+    // Assumes TIM2 input clock is 16 MHz.
+    TIM2->CR1 = 0U;           // Stop timer; upcounting, updates enabled
+    TIM2->PSC = 16U - 1U;     // Divide by 16 -> 1 MHz
+    TIM2->ARR = 0xFFFFFFFFU;
+
+    TIM2->EGR = 1U;           // UG: apply the prescaler immediately
+    TIM2->SR = 0U;            // Clear flags raised by the update
+    TIM2->CNT = 0U;
+    TIM2->CR1 = 1U;           // Start timer
 }
 
 uint8_t HCSR04_TryGetDistance(float *distance_cm) {
