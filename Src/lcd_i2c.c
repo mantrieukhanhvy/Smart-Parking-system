@@ -1,11 +1,3 @@
-/*
- * lcd_i2c.c
- *
- *  Created on: Oct 21, 2026
- *      Author: ASUS
- */
-
-
 #include "lcd_i2c.h"
 
 // Initialize I2C1 hardware on pins PB6 and PB7

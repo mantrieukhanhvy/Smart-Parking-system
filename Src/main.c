@@ -34,17 +34,12 @@ int main(void) {
     HCSR04_Init();
     Servo_Init();
     LED_Init();
-
-    Servo_SetAngle(0);
     
     printf("Loading config \n");
     
     //Handles error if the flash memory is not initialized or corrupted
     if (!ParkingConfig_Init(&parking_capacity)) {
         printf("Flash config ERROR\r\n");
-        while (1) {
-            Servo_SetAngle(0);
-        }
     }
     
     /* Initialize the RTOS kernel and start the scheduler. */

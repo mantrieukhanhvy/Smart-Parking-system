@@ -1,10 +1,3 @@
-/*
- * ir_sensor.c
- *
- *  Created on: Oct 21, 2026
- *      Author: ASUS
- */
-
 #include "ir_sensor.h"
 
 void IR_Sensor_Init(void) {

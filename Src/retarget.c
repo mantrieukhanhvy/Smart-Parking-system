@@ -1,5 +1,6 @@
 #include "retarget.h"
 
+#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -36,11 +37,17 @@ void SWO_Init(void)
 int _write(int file, char *ptr, int len)
 {
     (void)file;
+
+    if ((ITM_TCR & ITM_TCR_ITMENA) == 0U ||
+        (ITM_TER & 1UL) == 0U) {
+        errno = EIO;
+        return -1;
+    }
+
     for (int i = 0; i < len; i++) {
-        while ((ITM_TCR & ITM_TCR_ITMENA) == 0 ||
-               (ITM_TER & 1UL) == 0) {
+        while ((ITM_STIM0 & 1UL) == 0U) {
         }
-        ITM_STIM0 = (uint8_t)*ptr++;
+        ITM_STIM0 = (uint8_t)ptr[i];
     }
     return len;
 }
