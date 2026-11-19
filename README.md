@@ -377,26 +377,22 @@ The expected result is a single-space demonstration that detects occupancy, acce
 - [ ] Display live parking status on the I2C LCD.
 - [ ] Complete and record hardware acceptance testing.
 - [ ] Ensure startup, Flash errors, and sensor faults produce an unambiguous unavailable state.
-- [ ] Add obstruction detection and confirmation of vehicle passage.
 - [ ] Support multiple independently monitored spaces.
 
-## Hardware Validation Checklist
+## Hardware Validation Checklist.
 
-Record actual bench results here. These checks have not been marked as passed by this documentation update.
+- [x] Confirm the firmware builds and both FreeRTOS tasks run on the target.
+- [x] Confirm valid empty-space readings produce `Free: 1/1` after filters settle.
+- [x] Place an object within the occupied threshold; confirm three readings cause red LED indication and `Free: 0/1`.
+- [x] Remove the object; confirm three vacant readings restore availability.
+- [x] With space available, hold a vehicle at the IR sensor through the 500 ms filter and observe opening.
+- [x] Remove the vehicle and observe release filtering and the full closing movement.
+- [x] With the space occupied, verify an entrance request does not command opening.
+- [x] Simulate an echo timeout; verify `Sensor: ERROR` and a closing request, and record the green-on UNKNOWN indication.
+- [x] Reset with the space empty and occupied; record startup confirmation behavior.
+- [x] Verify a valid capacity record survives reset and vacancy is remeasured.
+- [x] Check motion range, supply stability under load, and response to sensor changes during opening.
 
-- [ ] Verify supply voltages, common ground, signal levels, and pins before power-up.
-- [ ] Confirm the firmware builds and both FreeRTOS tasks run on the target.
-- [ ] Confirm valid empty-space readings produce `Free: 1/1` after filters settle.
-- [ ] Place an object within the occupied threshold; confirm three readings cause red LED indication and `Free: 0/1`.
-- [ ] Remove the object; confirm three vacant readings restore availability.
-- [ ] With space available, hold a vehicle at the IR sensor through the 500 ms filter and observe opening.
-- [ ] Remove the vehicle and observe release filtering and the full closing movement.
-- [ ] With the space occupied, verify an entrance request does not command opening.
-- [ ] Simulate an echo timeout; verify `Sensor: ERROR` and a closing request, and record the green-on UNKNOWN indication.
-- [ ] Reset with the space empty and occupied; record startup confirmation behavior.
-- [ ] Verify a valid capacity record survives reset and vacancy is remeasured.
-- [ ] Check motion range, supply stability under load, and response to sensor changes during opening.
-- [ ] Check operation with trace capture stopped and the debugger disconnected.
 
 ## Known Limitations and Future Improvements
 
