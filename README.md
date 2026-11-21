@@ -379,7 +379,9 @@ The expected result is a single-space demonstration that detects occupancy, acce
 - [ ] Ensure startup, Flash errors, and sensor faults produce an unambiguous unavailable state.
 - [ ] Support multiple independently monitored spaces.
 
-## Hardware Validation Checklist.
+## Hardware Validation Checklist
+
+The items below are marked complete in the project checklist. This README includes no test captures or measurements, and formal hardware acceptance remains open.
 
 - [x] Confirm the firmware builds and both FreeRTOS tasks run on the target.
 - [x] Confirm valid empty-space readings produce `Free: 1/1` after filters settle.
@@ -422,7 +424,6 @@ Low-power Stop mode and external-interrupt wake-up are also future work. The cur
 | Green LED during sensor error | This matches `LED_STATUS_UNKNOWN` handling in `Src/led.c`; use diagnostics to distinguish it from vacancy. |
 | Gate does not open | Confirm valid vacancy, PE8 LOW on detection, 500 ms stable detection, servo power, and PA6 PWM. |
 | Gate closes slowly | The current driver changes pulse width once per control loop; a full close takes about 9.5 seconds or more. |
-|
 | No LCD status | The application does not call the LCD driver. Integrate it before checking address, contrast, and wiring for live output. |
 | Reset during servo motion | Check motor supply capacity, ground, decoupling, wiring resistance, and mechanical load. |
 | `Flash config ERROR` | Inspect sector 11 programming/erase status and protection; gate behavior is not reliable on this error path. |
